@@ -12,9 +12,16 @@ class BusinessesViewController: UIViewController {
   
   @IBOutlet weak var tableView: UITableView!
   var businesses: [Business]!
+  var searchBusinesses: [Business]?
+  var isSearching: Bool = false
   
   override func viewDidLoad() {
     super.viewDidLoad()
+    
+    let searchBar = UISearchBar()
+    searchBar.sizeToFit()
+    navigationItem.titleView = searchBar
+    searchBar.delegate = self
     
     tableView.dataSource = self
     tableView.delegate = self
@@ -65,26 +72,52 @@ class BusinessesViewController: UIViewController {
   
 }
 
-extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, FiltersViewControllerDelegate {
+extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, FiltersViewControllerDelegate, UISearchBarDelegate {
 
   func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-    if businesses != nil {
-      return businesses.count
+    if isSearching {
+      if searchBusinesses != nil {
+        return searchBusinesses!.count
+      } else {
+        return 0
+      }
     } else {
-      return 0
+      if businesses != nil {
+        return businesses.count
+      } else {
+        return 0
+      }
     }
   }
   
   func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCellWithIdentifier("BusinessCell", forIndexPath: indexPath) as! BusinessCell
     
-    cell.business = businesses[indexPath.row]
+    if isSearching {
+      cell.business = searchBusinesses![indexPath.row]
+    } else {
+      cell.business = businesses[indexPath.row]
+    }
     
     return cell
   }
+  
+  func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
+    if searchText.isEmpty {
+      isSearching = false
+      searchBusinesses = nil
+    } else {
+      isSearching = true
+      searchBusinesses = businesses.filter({(data: Business) -> Bool in
+        return data.name!.rangeOfString(searchText, options: .CaseInsensitiveSearch) != nil
+      })
+      
+    }
+    tableView.reloadData()
+  }
 
   func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String : AnyObject]) {
-    var categories = filters["categories"] as? [String]
+    let categories = filters["categories"] as? [String]
     
     Business.searchWithTerm("Restaurants", sort: nil, categories: categories, deals: nil) {
       (businesses: [Business]!, error: NSError!) -> Void in
