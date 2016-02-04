@@ -12,13 +12,28 @@ class BusinessesViewController: UIViewController {
   
   @IBOutlet weak var tableView: UITableView!
   var businesses: [Business]!
+  
+  var refreshControl: UIRefreshControl!
+  
+  var searchBar: UISearchBar!
   var searchBusinesses: [Business]?
   var isSearching: Bool = false
+  
+  var loadingMoreView:InfiniteScrollView?
+  var isLoading: Bool = false
+  var isAtEnd: Bool = false
+  
+  var categories: [String]?
+  var offset: Int = 0
   
   override func viewDidLoad() {
     super.viewDidLoad()
     
-    let searchBar = UISearchBar()
+    refreshControl = UIRefreshControl()
+    refreshControl.addTarget(self, action: "refresh:", forControlEvents: UIControlEvents.ValueChanged)
+    tableView.addSubview(refreshControl)
+    
+    searchBar = UISearchBar()
     searchBar.sizeToFit()
     navigationItem.titleView = searchBar
     searchBar.delegate = self
@@ -28,16 +43,16 @@ class BusinessesViewController: UIViewController {
     tableView.rowHeight = UITableViewAutomaticDimension
     tableView.estimatedRowHeight = 120
     
-    Business.searchWithTerm("Thai", completion: { (businesses: [Business]!, error: NSError!) -> Void in
-      self.businesses = businesses
-      
-      for business in businesses {
-        print(business.name!)
-        print(business.address!)
-      }
-      
-      self.tableView.reloadData()
-    })
+    let frame = CGRectMake(0, tableView.contentSize.height, tableView.bounds.size.width, InfiniteScrollView.defaultHeight)
+    loadingMoreView = InfiniteScrollView(frame: frame)
+    loadingMoreView!.hidden = true
+    tableView.addSubview(loadingMoreView!)
+    
+    var insets = tableView.contentInset
+    insets.bottom += InfiniteScrollView.defaultHeight
+    tableView.contentInset = insets
+    
+    loadData()
     
     /* Example of Yelp search with more search options specified
     Business.searchWithTerm("Restaurants", sort: .Distance, categories: ["asianfusion", "burgers"], deals: true) { (businesses: [Business]!, error: NSError!) -> Void in
@@ -68,7 +83,41 @@ class BusinessesViewController: UIViewController {
     
     filtersViewController.delegate = self
   }
+  
 
+  func loadData() {
+    Business.searchWithTerm("restaurants", sort: nil, categories: categories, deals: nil, offset: offset) {
+    (businesses: [Business]!, error: NSError!) -> Void in
+      
+      if self.offset == 0 {
+        self.businesses = businesses
+      } else {
+        self.businesses = self.businesses! + businesses!
+      }
+      
+      if businesses.count == 0 {
+        self.isAtEnd = true
+      }
+//      print("loaded \(businesses.count) items")
+      
+      self.searchBar(self.searchBar, textDidChange: self.searchBar.text!)
+      
+      self.refreshControl.endRefreshing()
+      self.isLoading = false
+      self.loadingMoreView?.stopAnimating()
+    }
+  }
+  
+  //Refreshing the page from the top will reset the loaded data and start from an offset of zero again
+  func refresh(sender: AnyObject) {
+    resetAndLoad()
+  }
+  
+  func resetAndLoad() {
+    offset = 0
+    isAtEnd = false
+    loadData()
+  }
   
 }
 
@@ -102,6 +151,25 @@ extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, 
     return cell
   }
   
+  func scrollViewDidScroll(scrollView: UIScrollView) {
+    if !isLoading {
+      let scrollViewContentHeight = tableView.contentSize.height
+      let scrollOffsetThreshold = scrollViewContentHeight - tableView.bounds.size.height
+      
+      if scrollView.contentOffset.y > scrollOffsetThreshold && tableView.dragging && !isAtEnd {
+        isLoading = true
+        
+        let frame = CGRectMake(0, tableView.contentSize.height, tableView.bounds.size.width, InfiniteScrollView.defaultHeight)
+        loadingMoreView?.frame = frame
+        loadingMoreView!.startAnimating()
+        
+        offset = businesses.count
+        
+        loadData()
+      }
+    }
+  }
+  
   func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
     if searchText.isEmpty {
       isSearching = false
@@ -116,14 +184,9 @@ extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, 
     tableView.reloadData()
   }
 
-  func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String : AnyObject]) {
-    let categories = filters["categories"] as? [String]
-    
-    Business.searchWithTerm("Restaurants", sort: nil, categories: categories, deals: nil) {
-      (businesses: [Business]!, error: NSError!) -> Void in
-        self.businesses = businesses
-        self.tableView.reloadData()
-    }
-    
+  //Sets category filters and refreshes the tableview
+  func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String]?) {
+    categories = filters
+    resetAndLoad()
   }
 }

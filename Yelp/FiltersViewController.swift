@@ -8,8 +8,8 @@
 
 import UIKit
 
-@objc protocol FiltersViewControllerDelegate {
-  optional func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String:AnyObject])
+protocol FiltersViewControllerDelegate {
+  func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String]?)
 }
 
 class FiltersViewController: UIViewController {
@@ -19,7 +19,7 @@ class FiltersViewController: UIViewController {
   var categories: [[String:String]]!
   var switchStates = [Int: Bool]()
   
-  weak var delegate: FiltersViewControllerDelegate?
+  var delegate: FiltersViewControllerDelegate?
   
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -52,7 +52,7 @@ class FiltersViewController: UIViewController {
   }
   
   @IBAction func onSearchButton(sender: AnyObject) {
-    var filters = [String: AnyObject]()
+//    var filters = [String: AnyObject]()
     var selectedCategories = [String]()
     
     for (row, isSelected) in switchStates {
@@ -60,11 +60,13 @@ class FiltersViewController: UIViewController {
         selectedCategories.append(categories[row]["code"]!)
       }
     }
-    if selectedCategories.count > 0 {
-      filters["categories"] = selectedCategories
-    }
+//    if selectedCategories.count > 0 {
+//      filters["categories"] = selectedCategories
+//    } else {
+//      filters["categories"] = nil
+//    }
     
-    delegate?.filtersViewController?(self, didUpdateFilters: filters)
+    delegate?.filtersViewController(self, didUpdateFilters: selectedCategories)
     
     
     dismissViewControllerAnimated(true, completion: nil)
