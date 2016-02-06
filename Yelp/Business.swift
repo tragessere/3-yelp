@@ -7,15 +7,19 @@
 //
 
 import UIKit
+import CoreLocation
 
 class Business: NSObject {
     let name: String?
+//    let descriptionSnippet: String?
     let address: String?
     let imageURL: NSURL?
     let categories: String?
     let distance: String?
     let ratingImageURL: NSURL?
     let reviewCount: NSNumber?
+  
+    let coordinate: CLLocation?
     
     init(dictionary: NSDictionary) {
         name = dictionary["name"] as? String
@@ -42,6 +46,22 @@ class Business: NSObject {
                 }
                 address += neighborhoods![0] as! String
             }
+          
+            let coordinate = location!["coordinate"] as? NSDictionary
+            if coordinate != nil {
+                let latitude = coordinate!["latitude"] as? Double
+                let longitude = coordinate!["longitude"] as? Double
+                
+                if latitude != nil  && longitude != nil {
+                    self.coordinate = CLLocation(latitude: CLLocationDegrees(latitude!), longitude: CLLocationDegrees(longitude!))
+                } else {
+                    self.coordinate = nil
+                }
+            } else {
+                self.coordinate = nil
+            }
+        } else {
+            self.coordinate = nil
         }
         self.address = address
         
@@ -88,7 +108,7 @@ class Business: NSObject {
         YelpClient.sharedInstance.searchWithTerm(term, completion: completion)
     }
     
-    class func searchWithTerm(term: String, sort: YelpSortMode?, categories: [String]?, deals: Bool?, offset: Int?, completion: ([Business]!, NSError!) -> Void) -> Void {
-        YelpClient.sharedInstance.searchWithTerm(term, sort: sort, categories: categories, deals: deals, offset: offset, completion: completion)
+  class func searchWithTerm(term: String, sort: YelpSortMode?, location: CLLocation?, categories: [String]?, deals: Bool?, offset: Int?, completion: ([Business]!, NSError!) -> Void) -> Void {
+        YelpClient.sharedInstance.searchWithTerm(term, sort: sort, location: location, categories: categories, deals: deals, offset: offset, completion: completion)
     }
 }

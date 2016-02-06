@@ -7,11 +7,14 @@
 //
 
 import UIKit
+import CoreLocation
 
 class BusinessesViewController: UIViewController {
   
   @IBOutlet weak var tableView: UITableView!
   var businesses: [Business]!
+  var locationManager: CLLocationManager!
+  var location: CLLocation?
   
   var refreshControl: UIRefreshControl!
   
@@ -21,7 +24,7 @@ class BusinessesViewController: UIViewController {
   
   var loadingMoreView:InfiniteScrollView?
   var isLoading: Bool = false
-  var isAtEnd: Bool = false
+  var isAtEnd: Bool = true
   
   var categories: [String]?
   var offset: Int = 0
@@ -52,11 +55,18 @@ class BusinessesViewController: UIViewController {
     insets.bottom += InfiniteScrollView.defaultHeight
     tableView.contentInset = insets
     
-    loadData()
+    
+    locationManager = CLLocationManager()
+    locationManager.delegate = self
+    locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+    locationManager.distanceFilter = 200
+    locationManager.requestWhenInUseAuthorization()
+    
+//    loadData()
     
     /* Example of Yelp search with more search options specified
     Business.searchWithTerm("Restaurants", sort: .Distance, categories: ["asianfusion", "burgers"], deals: true) { (businesses: [Business]!, error: NSError!) -> Void in
-    self.businesses = businesses
+    self.businesses/Users/evan/Documents/CS490/2-yelp/Yelp/MapViewController.swift = businesses
     
     for business in businesses {
     print(business.name!)
@@ -78,16 +88,28 @@ class BusinessesViewController: UIViewController {
   override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
     // Get the new view controller using segue.destinationViewController.
     // Pass the selected object to the new view controller.
-    let navigationController = segue.destinationViewController as! UINavigationController
-    let filtersViewController = navigationController.topViewController as! FiltersViewController
-    
-    filtersViewController.delegate = self
+    if let identifier = segue.identifier {
+      if identifier == "FilterSegue" {
+        let navigationController = segue.destinationViewController as! UINavigationController
+        let filtersViewController = navigationController.topViewController as! FiltersViewController
+        
+        filtersViewController.delegate = self
+      } else if identifier == "MapSegue" {
+        let navigationController = segue.destinationViewController as! UINavigationController
+        let mapViewController = navigationController.topViewController as! MapViewController
+        mapViewController.businesses = self.businesses
+      }
+	}
   }
   
 
   func loadData() {
-    Business.searchWithTerm("restaurants", sort: nil, categories: categories, deals: nil, offset: offset) {
+    Business.searchWithTerm("restaurants", sort: nil, location: location, categories: categories, deals: nil, offset: offset) {
     (businesses: [Business]!, error: NSError!) -> Void in
+      
+      if error != nil {
+        return
+      }
       
       if self.offset == 0 {
         self.businesses = businesses
@@ -97,6 +119,8 @@ class BusinessesViewController: UIViewController {
       
       if businesses.count == 0 {
         self.isAtEnd = true
+      } else {
+        self.isAtEnd = false
       }
 //      print("loaded \(businesses.count) items")
       
@@ -115,13 +139,12 @@ class BusinessesViewController: UIViewController {
   
   func resetAndLoad() {
     offset = 0
-    isAtEnd = false
     loadData()
   }
   
 }
 
-extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, FiltersViewControllerDelegate, UISearchBarDelegate {
+extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, FiltersViewControllerDelegate, UISearchBarDelegate, CLLocationManagerDelegate {
 
   func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
     if isSearching {
@@ -188,5 +211,25 @@ extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, 
   func filtersViewController(filtersViewController: FiltersViewController, didUpdateFilters filters: [String]?) {
     categories = filters
     resetAndLoad()
+  }
+  
+  func locationManager(manager: CLLocationManager, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
+    if status == CLAuthorizationStatus.AuthorizedWhenInUse {
+      locationManager.startUpdatingLocation()
+    }
+  }
+  
+  func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    if locations.first != nil {
+      location = locations.first
+      resetAndLoad()
+    }
+    
+//    if let location = locations.first {
+//      let span = MKCoordinateSpanMake(0.1, 0.1)
+//      let region = MKCoordinateRegionMake(location.coordinate, span)
+//      mapView.setRegion(region, animated: false)
+//      addAnnotationAtCoordinate(location.coordinate)
+//    }
   }
 }
