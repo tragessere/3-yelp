@@ -21,6 +21,7 @@ class BusinessesViewController: UIViewController {
   var searchBar: UISearchBar!
   var searchBusinesses: [Business]?
   var isSearching: Bool = false
+  var searchFilter: String?
   
   var loadingMoreView:InfiniteScrollView?
   var isLoading: Bool = false
@@ -104,7 +105,7 @@ class BusinessesViewController: UIViewController {
   
 
   func loadData() {
-    Business.searchWithTerm("restaurants", sort: nil, location: location, categories: categories, deals: nil, offset: offset) {
+    Business.searchWithTerm(searchFilter, sort: nil, location: location, categories: categories, deals: nil, offset: offset) {
     (businesses: [Business]!, error: NSError!) -> Void in
       
       if error != nil {
@@ -124,7 +125,8 @@ class BusinessesViewController: UIViewController {
       }
 //      print("loaded \(businesses.count) items")
       
-      self.searchBar(self.searchBar, textDidChange: self.searchBar.text!)
+//      self.searchBar(self.searchBar, textDidChange: self.searchBar.text!)
+      self.tableView.reloadData()
       
       self.refreshControl.endRefreshing()
       self.isLoading = false
@@ -193,18 +195,35 @@ extension BusinessesViewController: UITableViewDataSource, UITableViewDelegate, 
     }
   }
   
-  func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
-    if searchText.isEmpty {
-      isSearching = false
-      searchBusinesses = nil
+//  func searchBar(searchBar: UISearchBar, textDidChange searchText: String) {
+//    if searchText.isEmpty {
+//      isSearching = false
+//      searchBusinesses = nil
+//    } else {
+//      isSearching = true
+//      searchBusinesses = businesses.filter({(data: Business) -> Bool in
+//        return data.name!.rangeOfString(searchText, options: .CaseInsensitiveSearch) != nil
+//      })
+//      
+//    }
+//    tableView.reloadData()
+//  }
+  
+  func searchBarCancelButtonClicked(searchBar: UISearchBar) {
+    searchFilter = nil
+    
+    resetAndLoad()
+  }
+  
+  func searchBarSearchButtonClicked(searchBar: UISearchBar) {
+    if searchBar.text != nil && !searchBar.text!.isEmpty {
+      searchFilter = searchBar.text!
     } else {
-      isSearching = true
-      searchBusinesses = businesses.filter({(data: Business) -> Bool in
-        return data.name!.rangeOfString(searchText, options: .CaseInsensitiveSearch) != nil
-      })
-      
+      searchFilter = nil
     }
-    tableView.reloadData()
+    
+    self.view.endEditing(true)
+    resetAndLoad()
   }
 
   //Sets category filters and refreshes the tableview

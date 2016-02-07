@@ -52,19 +52,28 @@ class YelpClient: BDBOAuth1RequestOperationManager {
         self.requestSerializer.saveAccessToken(token)
     }
     
-    func searchWithTerm(term: String, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation {
+    func searchWithTerm(term: String?, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation {
         return searchWithTerm(term, sort: nil, location: nil, categories: nil, deals: nil, offset: nil, completion: completion)
     }
     
-    func searchWithTerm(term: String, sort: YelpSortMode?, location: CLLocation?, categories: [String]?, deals: Bool?, offset: Int?, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation {
+    func searchWithTerm(term: String?, sort: YelpSortMode?, location: CLLocation?, categories: [String]?, deals: Bool?, offset: Int?, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation {
         // For additional parameters, see http://www.yelp.com/developers/documentation/v2/search_api
         var parameters: [String: AnyObject]!
       
+      if term != nil {
+        parameters = ["term": term!]
+      } else {
+        //Default search for all restaurants
+        parameters = ["term": "restaurants"]
+      }
+      
         if location != nil {
-          parameters = ["term": term, "ll": "\(location!.coordinate.latitude),\(location!.coordinate.longitude)"]
+//          parameters = ["term": term, "ll": "\(location!.coordinate.latitude),\(location!.coordinate.longitude)"]
+          parameters["ll"] = "\(location!.coordinate.latitude),\(location!.coordinate.longitude)"
         } else {
           // Default the location to San Francisco
-          parameters = ["term": term, "ll": "37.785771,-122.406165"]
+//          parameters = ["term": term, "ll": "37.785771,-122.406165"]
+          parameters["ll"] = "37.785771,-122.406165"
         }
       
         if sort != nil {
